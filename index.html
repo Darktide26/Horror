@@ -1,1027 +1,720 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEAD SHIFT: CONTAINMENT</title>
-
+<title>THE LAST SHIFT: TASK PROTOCOL</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
+
 *{box-sizing:border-box}
-
-body{
-    margin:0;
-    background:#05070a;
-    color:#e5edf2;
-    font-family:Arial,sans-serif;
-    overflow:hidden;
-}
-
-canvas{
-    display:block;
-    width:100vw;
-    height:100vh;
-}
-
-#hud{
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-}
-
-.panel{
-    background:rgba(5,12,18,.88);
-    border:1px solid #33434f;
-    padding:12px;
-    border-radius:4px;
-}
-
-#tasks{
-    position:absolute;
-    top:15px;
-    left:15px;
-    width:230px;
-}
-
-#taskList{
-    padding-left:18px;
-    line-height:1.8;
-}
-
-#status{
-    position:absolute;
-    top:15px;
-    right:15px;
-    text-align:right;
-}
-
-#bottom{
-    position:absolute;
-    bottom:18px;
-    width:100%;
-    text-align:center;
-    text-shadow:0 2px 5px black;
-}
-
-#prompt{
-    color:#f0cf81;
-    font-weight:bold;
-    margin-bottom:6px;
-}
-
-#crosshair{
-    position:absolute;
-    top:50%;
-    left:50%;
-    width:8px;
-    height:8px;
-    border:1px solid white;
-    border-radius:50%;
-    transform:translate(-50%,-50%);
-}
-
-#warning{
-    color:#ff3949;
-    font-weight:bold;
-}
-
-#overlay{
-    position:fixed;
-    inset:0;
-    z-index:10;
-    background:rgba(0,0,0,.92);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-#card{
-    width:min(550px,92vw);
-    padding:30px;
-    background:#0b1118;
-    border:1px solid #34434d;
-    box-shadow:0 0 70px #000;
-}
-
-h1{
-    letter-spacing:5px;
-    color:#e8edf1;
-}
-
-p{
-    color:#b6c3cc;
-    line-height:1.6;
-}
-
-button{
-    background:#a51f2b;
-    color:white;
-    border:none;
-    padding:12px 18px;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#d22b38;
-}
-
-#taskModal{
-    display:none;
-    position:fixed;
-    z-index:8;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    width:min(430px,90vw);
-    padding:24px;
-    background:#0b141d;
-    border:1px solid #53616b;
-    box-shadow:0 0 80px black;
-}
-
-#taskModal button{
-    margin:4px;
-}
-
-#closeTask{
-    float:right;
-    background:#39434c;
-}
-
-#taskGame{
-    margin:15px 0;
-}
-
-#hurt{
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    background:#b00016;
-    opacity:0;
-    z-index:5;
-}
-
-#flash{
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    background:white;
-    opacity:0;
-    z-index:4;
-}
+body{margin:0;overflow:hidden;background:#050709;color:#dce7e9;font-family:'Share Tech Mono',monospace}
+canvas{display:block}
+.hidden{display:none!important}
+#hud{position:fixed;inset:0;pointer-events:none}
+#topbar{position:absolute;top:20px;left:24px;right:24px;display:flex;justify-content:space-between;text-shadow:0 0 10px #000}
+.label{font-size:11px;letter-spacing:3px;color:#91a8af}
+.value{font:18px Orbitron;margin-top:6px}
+#progress{color:#65f0cc}
+#objective{position:absolute;left:24px;bottom:25px;background:#040a0dcc;border-left:3px solid #65f0cc;padding:12px 16px;min-width:270px}
+#objectiveText{margin-top:7px;font-size:14px}
+#status{color:#65f0cc;margin-top:7px;font-size:11px}
+#staminaWrap{position:absolute;right:24px;bottom:28px;width:160px}
+#staminaBar{height:5px;margin-top:9px;background:#263238}
+#staminaFill{width:100%;height:100%;background:#65f0cc}
+#crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%)}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#c9e9e9}
+#crosshair:before{width:1px;height:12px;left:5px}
+#crosshair:after{width:12px;height:1px;top:5px}
+#prompt{position:absolute;top:57%;width:100%;text-align:center;color:#aaffea;font-size:14px;text-shadow:0 0 8px #000}
+#danger{position:absolute;inset:0;background:radial-gradient(transparent 35%,#8b0000 140%);opacity:0;transition:opacity .15s}
+#scanlines{position:fixed;inset:0;pointer-events:none;opacity:.08;background:repeating-linear-gradient(0deg,transparent 0 3px,#000 4px)}
+#overlay,#taskOverlay{position:fixed;inset:0;z-index:5;background:#020608eF;display:flex;align-items:center;justify-content:center;padding:20px}
+#panel,#taskPanel{width:min(620px,95vw);padding:35px;background:linear-gradient(145deg,#101a1d,#05090b);border:1px solid #395057;box-shadow:0 0 50px #000;text-align:center}
+.eyebrow{font-size:11px;letter-spacing:4px;color:#65f0cc}
+h1{font:900 clamp(32px,7vw,58px) Orbitron;line-height:1.08;margin:22px 0}
+p{color:#a8b9bd;line-height:1.7}
+button{font:14px 'Share Tech Mono';letter-spacing:2px;padding:14px 24px;color:#04100e;background:#65f0cc;border:0;cursor:pointer;margin-top:18px}
+button:hover{background:#a0ffe8}
+#controls{margin-top:25px;color:#789097;font-size:11px;line-height:2}
+#taskPanel{max-width:520px}
+#taskTitle{font:700 25px Orbitron;color:#65f0cc;margin:15px 0}
+#sequence{font:900 34px Orbitron;letter-spacing:12px;color:#fff;margin:25px 0}
+#taskFeedback{min-height:24px;color:#ff7777}
+#taskButtons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+#taskButtons button{font:700 20px Orbitron;margin:0;padding:18px 5px}
+#taskHint{font-size:12px;color:#91a8af}
+#toast{position:absolute;top:22%;width:100%;text-align:center;color:#ffdb8a;font-size:13px;letter-spacing:2px;text-shadow:0 0 8px #000}
 </style>
 </head>
-
 <body>
 
-<canvas id="game"></canvas>
-
-<div id="hud">
-
-    <div id="tasks" class="panel">
-        <b>SHIFT OBJECTIVES</b>
-        <div id="count">0 / 6 complete</div>
-        <ol id="taskList"></ol>
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <div>
+      <div class="label">RESEARCH FACILITY // SECTOR 09</div>
+      <div class="value">THE LAST SHIFT</div>
     </div>
-
-    <div id="status" class="panel">
-        POWER: <span id="power">100%</span><br>
-        THREAT: <span id="threat">LOW</span><br>
-        <span id="warning"></span>
+    <div style="text-align:right">
+      <div class="label">SYSTEMS RESTORED</div>
+      <div class="value" id="progress">0 / 6</div>
     </div>
-
-    <div id="crosshair"></div>
-
-    <div id="bottom">
-        <div id="prompt">WASD MOVE · MOUSE LOOK · E INTERACT</div>
-        <div>Complete all facility tasks to unlock the exit.</div>
-    </div>
-
+  </div>
+  <div id="objective">
+    <div class="label">CURRENT OBJECTIVE</div>
+    <div id="objectiveText">Restore all facility systems.</div>
+    <div id="status">FACILITY INTEGRITY: CRITICAL</div>
+  </div>
+  <div id="staminaWrap">
+    <div class="label">STAMINA</div>
+    <div id="staminaBar"><div id="staminaFill"></div></div>
+  </div>
+  <div id="crosshair"></div>
+  <div id="prompt"></div>
+  <div id="toast"></div>
+  <div id="danger"></div>
 </div>
 
-<div id="hurt"></div>
-<div id="flash"></div>
-
-<div id="taskModal">
-
-    <button id="closeTask">X</button>
-
-    <h2 id="taskTitle">TASK</h2>
-
-    <p id="taskText"></p>
-
-    <div id="taskGame"></div>
-
-    <button id="taskAction">COMPLETE</button>
-
-</div>
+<div id="scanlines"></div>
 
 <div id="overlay">
-
-    <div id="card">
-
-        <h1>DEAD SHIFT</h1>
-
-        <p><b>CONTAINMENT FACILITY // NIGHT 04</b></p>
-
-        <p>
-            The research facility has been abandoned.
-            Three hostile entities remain inside.
-        </p>
-
-        <p>
-            Restore six systems, survive the creatures,
-            and reach the exit.
-        </p>
-
-        <p>
-            <b>WASD:</b> Move<br>
-            <b>Mouse:</b> Look around<br>
-            <b>E:</b> Interact<br>
-            <b>Shift:</b> Sprint
-        </p>
-
-        <button id="start">BEGIN SHIFT</button>
-
+  <div id="panel">
+    <div class="eyebrow">◆ CLASSIFIED // INCIDENT 09 ◆</div>
+    <h1 id="title">THE LAST<br>SHIFT</h1>
+    <p id="description">
+      NIGHT SHIFT // 04<br>
+      RESEARCH FACILITY 09<br><br>
+      A complete systems failure has left the facility without power.
+      Communications are offline. Containment systems are malfunctioning.
+      <br><br>
+      Your assignment: restore all six systems and reach the emergency exit.
+      <br><br>
+      <strong>Something is still inside.</strong>
+    </p>
+    <button id="startButton">BEGIN SHIFT</button>
+    <div id="controls">
+      WASD — MOVE &nbsp; // &nbsp; MOUSE — LOOK<br>
+      SHIFT — SPRINT &nbsp; // &nbsp; F — FLASHLIGHT<br>
+      E — INTERACT &nbsp; // &nbsp; 1–4 — TASK INPUT<br>
+      ESC — PAUSE
     </div>
-
+  </div>
 </div>
 
-<script>
-(() => {
+<div id="taskOverlay" class="hidden">
+  <div id="taskPanel">
+    <div class="eyebrow">FACILITY MAINTENANCE TERMINAL</div>
+    <div id="taskTitle">SYSTEM REPAIR</div>
+    <p id="taskDescription">Restore the system.</p>
+    <div class="label">ENTER THE DISPLAYED ACCESS SEQUENCE</div>
+    <div id="sequence">1 2 3</div>
+    <div id="taskFeedback"></div>
+    <div id="taskButtons">
+      <button data-key="1">1</button>
+      <button data-key="2">2</button>
+      <button data-key="3">3</button>
+      <button data-key="4">4</button>
+    </div>
+    <p id="taskHint">Use the number keys or click the buttons. The facility is still active.</p>
+    <button id="closeTask" style="background:#26383d;color:#dce7e9">CLOSE TERMINAL</button>
+  </div>
+</div>
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 
-let W,H;
+// ----------------------------------------------------
+// SETTINGS AND MAZE
+// ----------------------------------------------------
+const TILE=4, WALL_HEIGHT=4.2, PLAYER_HEIGHT=1.65;
+const WALK_SPEED=4.1, RUN_SPEED=6.5;
 
-function resize(){
-    W = canvas.width = innerWidth;
-    H = canvas.height = innerHeight;
-}
+const maze=[
+"###############",
+"#P....#.......#",
+"###.#.#.###.#.#",
+"#...#...#...#.#",
+"#.#####.#.###.#",
+"#.....#.#.....#",
+"#.###.#.#####.#",
+"#.#...#.....#.#",
+"#.#.#####.#.#.#",
+"#...#.....#...#",
+"###.#.#######.#",
+"#...#.....#...#",
+"#.#######.#.###",
+"#.........#...E",
+"###############"
+];
+const ROWS=maze.length,COLS=maze[0].length;
 
-addEventListener("resize",resize);
-resize();
-
-const map = [
-"####################",
-"#....#.....#......#",
-"#....#.....#..##..#",
-"#.............##..#",
-"###.####.##......##",
-"#...#....##.##.....#",
-"#...#........#.....#",
-"#...####.##..#..##.#",
-"#........#..#......#",
-"#.######.#..####...#",
-"#......#..........##",
-"#..##..####.##.....#",
-"#..##...........##.#",
-"#......##.####.....#",
-"##.....#......#....#",
-"#......#......#....#",
-"#.................E#",
-"####################"
+const TASKS=[
+ {name:"GENERATOR CONTROL UNIT",desc:"Restore the auxiliary generator circuits.",row:1,col:3,done:"Generator online. Auxiliary power restored."},
+ {name:"SECURITY ACCESS TERMINAL",desc:"Reinitialize the security network.",row:3,col:2,done:"Camera feeds reconnected. Camera 04 reports movement."},
+ {name:"COOLANT REGULATION SYSTEM",desc:"Stabilize coolant pressure.",row:5,col:3,done:"Coolant pressure stabilized. Unknown material detected."},
+ {name:"COMMUNICATIONS ARRAY",desc:"Reconnect the external signal nodes.",row:7,col:3,done:"Incoming transmission detected. Source: UNKNOWN."},
+ {name:"BIOLOGICAL ANALYSIS STATION",desc:"Complete the pending sample analysis.",row:9,col:2,done:"Experiment 000 record recovered."},
+ {name:"EMERGENCY POWER DISTRIBUTION",desc:"Redirect power to the emergency exit.",row:11,col:3,done:"Emergency power restored. Exit unlocked."}
 ];
 
-const MW = map[0].length;
-const MH = map.length;
-
-let started = false;
-let dead = false;
-let won = false;
-let modal = false;
-let last = 0;
-
-const player = {
-    x:1.5,
-    y:1.5,
-    angle:0,
-    power:100
-};
-
-const keys = {};
-
-const tasks = [
-    {name:"Power Relay",x:2.5,y:2.5,done:false,type:0},
-    {name:"Medical Scanner",x:15.5,y:2.5,done:false,type:1},
-    {name:"Coolant Pump",x:2.5,y:6.5,done:false,type:2},
-    {name:"Security Terminal",x:14.5,y:7.5,done:false,type:0},
-    {name:"Research Samples",x:5.5,y:12.5,done:false,type:1},
-    {name:"Air Filtration",x:13.5,y:14.5,done:false,type:2}
+const LEVELS=[
+ {name:"RESEARCH LAB",wall:0x343d40,fog:0.027,speeds:[2.1,1.55,1.8]},
+ {name:"CONTAINMENT WING",wall:0x292f33,fog:0.034,speeds:[2.5,1.9,2.15]},
+ {name:"THE CORE",wall:0x30272a,fog:0.042,speeds:[2.9,2.2,2.5]}
 ];
+let currentLevel=1;
 
-const monsters = [
-    {
-        name:"THE STITCHER",
-        x:17.5,y:1.5,
-        speed:1.05,
-        range:8,
-        color:"#8d1825",
-        active:true
-    },
-    {
-        name:"THE HOLLOW",
-        x:17.5,y:9.5,
-        speed:.75,
-        range:10,
-        color:"#8ba9b7",
-        active:true
-    },
-    {
-        name:"THE WARDEN",
-        x:1.5,y:15.5,
-        speed:.65,
-        range:12,
-        color:"#68478e",
-        active:true
-    }
-];
+function worldPos(row,col){
+ return new THREE.Vector3((col-(COLS-1)/2)*TILE,0,(row-(ROWS-1)/2)*TILE);
+}
+function isOpen(r,c){return r>=0&&r<ROWS&&c>=0&&c<COLS&&maze[r][c]!=="#";}
+function cellAt(p){
+ return {row:Math.round(p.z/TILE+(ROWS-1)/2),col:Math.round(p.x/TILE+(COLS-1)/2)};
+}
+function key(r,c){return `${r},${c}`;}
 
-function distance(a,b){
-    return Math.hypot(a.x-b.x,a.y-b.y);
+// ----------------------------------------------------
+// THREE.JS SCENE
+// ----------------------------------------------------
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x05090b);
+scene.fog=new THREE.FogExp2(0x05090b,0.027);
+
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,150);
+camera.position.copy(worldPos(1,1));
+camera.position.y=PLAYER_HEIGHT;
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0x9eb9c0,0x101417,0.42));
+const ambient=new THREE.AmbientLight(0x82949a,0.18);
+scene.add(ambient);
+
+// Procedural concrete textures
+function makeTexture(base){
+ const c=document.createElement("canvas");c.width=c.height=256;
+ const ctx=c.getContext("2d");ctx.fillStyle=base;ctx.fillRect(0,0,256,256);
+ for(let i=0;i<1800;i++){
+  const shade=Math.floor(Math.random()*45);
+  ctx.fillStyle=`rgba(${shade+80},${shade+85},${shade+85},${Math.random()*0.15})`;
+  ctx.fillRect(Math.random()*256,Math.random()*256,Math.random()*3+1,Math.random()*3+1);
+ }
+ ctx.strokeStyle="rgba(0,0,0,.22)";
+ for(let y=0;y<256;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y);ctx.stroke();}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);return t;
+}
+const wallMat=new THREE.MeshStandardMaterial({map:makeTexture("#343d40"),roughness:0.95});
+const floorMat=new THREE.MeshStandardMaterial({map:makeTexture("#20282a"),roughness:1});
+const ceilingMat=new THREE.MeshStandardMaterial({color:0x171e20,roughness:1});
+const metalMat=new THREE.MeshStandardMaterial({color:0x465257,metalness:0.65,roughness:0.55});
+const darkMetal=new THREE.MeshStandardMaterial({color:0x141b1e,metalness:0.6,roughness:0.65});
+const yellowMat=new THREE.MeshStandardMaterial({color:0xc69a36,emissive:0x382400});
+const redMat=new THREE.MeshStandardMaterial({color:0x661d1d,emissive:0x3a0000});
+
+function box(parent,size,pos,mat){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);
+ m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
 }
 
-function wall(x,y){
+// Floor and ceiling
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(COLS*TILE,ROWS*TILE),floorMat);
+floor.rotation.x=-Math.PI/2;floor.position.y=-0.06;floor.receiveShadow=true;scene.add(floor);
+const ceiling=new THREE.Mesh(new THREE.PlaneGeometry(COLS*TILE,ROWS*TILE),ceilingMat);
+ceiling.rotation.x=Math.PI/2;ceiling.position.y=WALL_HEIGHT;scene.add(ceiling);
 
-    const ix=Math.floor(x);
-    const iy=Math.floor(y);
-
-    if(iy<0||iy>=MH||ix<0||ix>=MW)
-        return true;
-
-    return map[iy][ix]==="#";
+// Walls
+const wallGeo=new THREE.BoxGeometry(TILE,WALL_HEIGHT,TILE);
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+ if(maze[r][c]==="#"){
+  const p=worldPos(r,c);
+  const w=new THREE.Mesh(wallGeo,wallMat);w.position.set(p.x,WALL_HEIGHT/2,p.z);
+  w.castShadow=true;w.receiveShadow=true;scene.add(w);
+ }
 }
 
-function ray(angle,maxDistance=25){
-
-    const step=.025;
-
-    for(let d=.01;d<maxDistance;d+=step){
-
-        const x=player.x+Math.cos(angle)*d;
-        const y=player.y+Math.sin(angle)*d;
-
-        if(wall(x,y))
-            return d;
-
-    }
-
-    return maxDistance;
+// Ceiling lights
+for(const [r,c] of [[1,2],[1,9],[3,6],[5,2],[5,11],[7,10],[9,5],[11,8],[13,3]]){
+ const p=worldPos(r,c);
+ const lamp=new THREE.PointLight(0x9bb7b9,0.65,10,2);
+ lamp.position.set(p.x,3.75,p.z);scene.add(lamp);
+ box(scene,[0.8,0.08,0.8],[p.x,4.08,p.z],new THREE.MeshBasicMaterial({color:0x9ab5b8}));
 }
 
-function updateTasks(){
-
-    const completed=tasks.filter(t=>t.done).length;
-
-    document.getElementById("count").textContent=
-        completed+" / "+tasks.length+" complete";
-
-    document.getElementById("taskList").innerHTML=
-        tasks.map(t=>
-            `<li style="color:${t.done?"#70d89a":"#b7c5ce"}">
-            ${t.done?"✓ ":""}${t.name}</li>`
-        ).join("");
-
+// Facility decorations: pipes and storage cabinets
+for(const [r,c] of [[2,2],[4,2],[6,2],[8,2],[10,2],[12,2],[3,10],[5,10],[7,10],[9,10]]){
+ const p=worldPos(r,c);
+ const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,3.5,8),metalMat);
+ pipe.position.set(p.x+1.45,2,p.z);scene.add(pipe);
+}
+for(const [r,c] of [[1,10],[5,12],[9,12],[11,8]]){
+ const p=worldPos(r,c);
+ const cab=new THREE.Group();cab.position.set(p.x,0,p.z);
+ box(cab,[1.2,2.1,0.65],[0,1.05,0],darkMetal);
+ box(cab,[0.08,0.2,0.04],[0,1.55,0.35],yellowMat);
+ scene.add(cab);
 }
 
-function nearestTask(){
+// Signs
+function sign(r,c,label){
+ const p=worldPos(r,c);
+ const canvas=document.createElement("canvas");canvas.width=512;canvas.height=128;
+ const ctx=canvas.getContext("2d");ctx.fillStyle="#171f22";ctx.fillRect(0,0,512,128);
+ ctx.strokeStyle="#a23b32";ctx.lineWidth=7;ctx.strokeRect(5,5,502,118);
+ ctx.fillStyle="#e0d9c8";ctx.font="bold 35px monospace";ctx.textAlign="center";ctx.fillText(label,256,78);
+ const tex=new THREE.CanvasTexture(canvas);
+ const signMesh=new THREE.Mesh(new THREE.PlaneGeometry(2.8,0.7),new THREE.MeshBasicMaterial({map:tex}));
+ signMesh.position.set(p.x,2.8,p.z-1.7);scene.add(signMesh);
+}
+sign(1,8,"RESEARCH // AUTHORIZED");
+sign(5,8,"CONTAINMENT // WARNING");
+sign(11,6,"POWER CORE // DANGER");
 
-    let best=-1;
-    let bestDistance=1.5;
+// ----------------------------------------------------
+// PLAYER AND FLASHLIGHT
+// ----------------------------------------------------
+const player={yaw:0,pitch:0,stamina:100,flashlightOn:true};
+camera.rotation.order="YXZ";
 
-    tasks.forEach((t,i)=>{
+const flashlight=new THREE.SpotLight(0xd9f3ff,3.2,25,Math.PI/7,0.38,1.4);
+flashlight.position.copy(camera.position);scene.add(flashlight);
+scene.add(flashlight.target);
+const flashlightBulb=new THREE.PointLight(0xd9f3ff,0.6,3);
+scene.add(flashlightBulb);
 
-        if(t.done)return;
+const hud=document.getElementById("hud");
+const overlay=document.getElementById("overlay");
+const title=document.getElementById("title");
+const description=document.getElementById("description");
+const startButton=document.getElementById("startButton");
+const objectiveText=document.getElementById("objectiveText");
+const statusText=document.getElementById("status");
+const progressText=document.getElementById("progress");
+const staminaFill=document.getElementById("staminaFill");
+const promptText=document.getElementById("prompt");
+const danger=document.getElementById("danger");
+const toast=document.getElementById("toast");
 
-        const d=distance(player,t);
+let running=false,gameOver=false,won=false,elapsed=0;
+let taskIndex=-1,taskSequence=[],taskInput=[],taskOpen=false;
+let restored=new Set(),toastTimer=0;
+const keys={};
 
-        if(d<bestDistance){
-            best=i;
-            bestDistance=d;
-        }
+// ----------------------------------------------------
+// TASK STATIONS
+// ----------------------------------------------------
+const stations=[];
+const stationGlow=new THREE.MeshStandardMaterial({
+ color:0x1c5c50,emissive:0x087b61,emissiveIntensity:1.5,
+ metalness:0.6,roughness:0.4
+});
+const stationLightMat=new THREE.MeshBasicMaterial({color:0x65f0cc});
 
-    });
+TASKS.forEach((task,i)=>{
+ const p=worldPos(task.row,task.col);
+ const g=new THREE.Group();g.position.set(p.x,0,p.z);
+ box(g,[1.1,1.25,0.65],[0,0.65,0],darkMetal);
+ box(g,[0.85,0.58,0.08],[0,1.08,0.36],stationGlow);
+ box(g,[0.5,0.045,0.03],[0,1.48,0.42],stationLightMat);
+ const screen=new THREE.PointLight(0x36e8b7,0.7,4);
+ screen.position.set(0,1.2,0.8);g.add(screen);
+ const beacon=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.12,10),stationLightMat);
+ beacon.position.set(0,1.65,0);g.add(beacon);
+ scene.add(g);
+ stations.push({group:g,task,i});
+});
 
-    return best;
+function updateObjective(){
+ progressText.textContent=`${restored.size} / ${TASKS.length}`;
+ if(restored.size<TASKS.length){
+  const next=TASKS.findIndex((t,i)=>!restored.has(i));
+  objectiveText.textContent=`Restore: ${TASKS[next].name}`;
+  statusText.textContent="FACILITY INTEGRITY: CRITICAL";
+  statusText.style.color="#65f0cc";
+ }else{
+  objectiveText.textContent="Reach the emergency exit.";
+  statusText.textContent="EXIT ACCESS: AUTHORIZED";
+  statusText.style.color="#ffe16b";
+ }
 }
 
-function exitDistance(){
-
-    return distance(player,{x:17.5,y:16.5});
-
+function showToast(message){
+ toast.textContent=message;toastTimer=3.5;
 }
 
-function showMessage(message){
-
-    document.getElementById("warning").textContent=message;
-
+function openTask(i){
+ if(restored.has(i)||taskOpen)return;
+ taskIndex=i;taskOpen=true;
+ taskSequence=Array.from({length:4},()=>1+Math.floor(Math.random()*4));
+ taskInput=[];
+ document.getElementById("taskTitle").textContent=TASKS[i].name;
+ document.getElementById("taskDescription").textContent=TASKS[i].desc;
+ document.getElementById("sequence").textContent=taskSequence.join("  ");
+ document.getElementById("taskFeedback").textContent="";
+ document.getElementById("taskOverlay").classList.remove("hidden");
 }
 
 function closeTask(){
-
-    modal=false;
-
-    document.getElementById("taskModal").style.display="none";
-
+ taskOpen=false;
+ document.getElementById("taskOverlay").classList.add("hidden");
 }
 
-function openTask(index){
-
-    modal=true;
-
-    const task=tasks[index];
-
-    document.getElementById("taskTitle").textContent=task.name;
-
-    document.getElementById("taskText").textContent=
-        "Facility system requires manual restoration.";
-
-    const game=document.getElementById("taskGame");
-
-    game.innerHTML="";
-
-    let progress=0;
-
-    if(task.type===0){
-
-        document.getElementById("taskText").textContent=
-            "Enter the access sequence: UP, CIRCLE, SQUARE.";
-
-        game.innerHTML=`
-            <input id="sequence"
-            placeholder="up circle square"
-            style="width:100%;padding:12px;background:#111;color:white;border:1px solid #555">
-        `;
-
-        document.getElementById("taskAction").textContent="VERIFY";
-
-    }
-
-    if(task.type===1){
-
-        document.getElementById("taskText").textContent=
-            "Stabilize the medical scanner. Click three times.";
-
-        game.innerHTML=`
-            <div style="background:#222;height:20px;margin:15px 0">
-                <div id="progressBar"
-                style="height:100%;width:0;background:#56d6a0"></div>
-            </div>
-            <button id="stabilize">STABILIZE</button>
-            <p id="progressText">0 / 3</p>
-        `;
-
-        document.getElementById("taskAction").textContent="FINISH";
-
-        document.getElementById("stabilize").onclick=()=>{
-
-            progress++;
-
-            document.getElementById("progressBar").style.width=
-                Math.min(progress,3)/3*100+"%";
-
-            document.getElementById("progressText").textContent=
-                Math.min(progress,3)+" / 3";
-
-        };
-
-    }
-
-    if(task.type===2){
-
-        document.getElementById("taskText").textContent=
-            "Restore the system in the correct order: 1, 2, 3.";
-
-        game.innerHTML=`
-            <div>
-                <button class="sequenceButton" data-number="1">1</button>
-                <button class="sequenceButton" data-number="2">2</button>
-                <button class="sequenceButton" data-number="3">3</button>
-            </div>
-            <p id="sequenceProgress">Sequence: 1 → 2 → 3</p>
-        `;
-
-        document.getElementById("taskAction").textContent="FINISH";
-
-        document.querySelectorAll(".sequenceButton").forEach(button=>{
-
-            button.onclick=()=>{
-
-                const expected=progress+1;
-                const selected=Number(button.dataset.number);
-
-                if(selected===expected){
-
-                    progress++;
-
-                    document.getElementById("sequenceProgress").textContent=
-                        progress>=3?"System restored!":"Progress: "+progress+"/3";
-
-                }else{
-
-                    progress=0;
-
-                    document.getElementById("sequenceProgress").textContent=
-                        "Incorrect sequence. Start again.";
-
-                }
-
-            };
-
-        });
-
-    }
-
-    document.getElementById("taskModal").style.display="block";
-
-    document.getElementById("taskAction").onclick=()=>{
-
-        let success=false;
-
-        if(task.type===0){
-
-            const input=document.getElementById("sequence");
-
-            success=input.value.trim().toLowerCase()==="up circle square";
-
-        }
-
-        if(task.type===1||task.type===2){
-
-            success=progress>=3;
-
-        }
-
-        if(success){
-
-            task.done=true;
-
-            updateTasks();
-
-            closeTask();
-
-            showMessage("SYSTEM RESTORED");
-
-        }else{
-
-            document.getElementById("taskText").textContent=
-                "System incomplete. Try again.";
-
-        }
-
-    };
-
+function enterTaskNumber(n){
+ if(!taskOpen)return;
+ taskInput.push(n);
+ const feedback=document.getElementById("taskFeedback");
+ const index=taskInput.length-1;
+ if(taskInput[index]!==taskSequence[index]){
+  taskInput=[];
+  feedback.textContent="ACCESS DENIED — SEQUENCE RESET";
+  return;
+ }
+ feedback.style.color="#65f0cc";
+ feedback.textContent=`SEQUENCE ACCEPTED: ${taskInput.length} / ${taskSequence.length}`;
+ if(taskInput.length===taskSequence.length){
+  restored.add(taskIndex);
+  closeTask();
+  showToast(TASKS[taskIndex].done);
+  updateObjective();
+  if(restored.size===TASKS.length){
+   showToast("ALL SYSTEMS RESTORED // EMERGENCY EXIT UNLOCKED");
+  }
+ }
 }
 
-document.getElementById("closeTask").onclick=closeTask;
+document.querySelectorAll("#taskButtons button").forEach(b=>{
+ b.addEventListener("click",()=>enterTaskNumber(Number(b.dataset.key)));
+});
+document.getElementById("closeTask").addEventListener("click",closeTask);
 
-document.getElementById("start").onclick=()=>{
+// ----------------------------------------------------
+// EXIT
+// ----------------------------------------------------
+const exitPos=worldPos(13,14);
+const exitGroup=new THREE.Group();exitGroup.position.set(exitPos.x,0,exitPos.z);scene.add(exitGroup);
+box(exitGroup,[1.7,3.3,0.35],[0,1.65,0],darkMetal);
+box(exitGroup,[1.3,2.9,0.1],[0,1.65,0.22],metalMat);
+box(exitGroup,[1.0,0.12,0.07],[0,2.55,0.3],yellowMat);
+const exitLamp=new THREE.PointLight(0xff2525,2.5,8);exitLamp.position.set(exitPos.x,2.8,exitPos.z);scene.add(exitLamp);
+const exitTerminal=box(exitGroup,[0.35,0.55,0.15],[0.8,1.25,0.35],stationGlow);
 
-    started=true;
+// ----------------------------------------------------
+// THREE DISTINCT ENTITIES
+// ----------------------------------------------------
+function makeEntity(type){
+ const g=new THREE.Group();
+ const skin=new THREE.MeshStandardMaterial({
+  color:type===2?0x25282b:type===1?0xb9c2c0:0x333b3d,
+  roughness:0.9
+ });
+ const dark=new THREE.MeshStandardMaterial({color:0x080b0c,roughness:1});
+ const eye=new THREE.MeshBasicMaterial({color:type===1?0xb9e8ff:0xff1515});
+ const height=type===2?2.9:type===1?2.5:2.7;
+ const torso=new THREE.Mesh(new THREE.CapsuleGeometry(type===2?0.42:0.28,height-0.8,4,8),skin);
+ torso.position.y=height/2;g.add(torso);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(type===2?0.38:0.28,12,10),skin);
+ head.position.y=height+0.12;g.add(head);
+ for(const s of [-1,1]){
+  const e=new THREE.Mesh(new THREE.SphereGeometry(0.075,8,8),eye);
+  e.position.set(s*0.13,height+0.15,-0.24);g.add(e);
+ }
+ // Long arms for the Stitcher; broad shoulders for the Warden.
+ for(const s of [-1,1]){
+  const armLength=type===0?1.35:type===2?1.0:1.15;
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.12,armLength,7),skin);
+  arm.position.set(s*(type===2?0.48:0.36),height*0.58,-0.02);
+  arm.rotation.z=s*0.13;g.add(arm);
+  const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.14,1.05,7),dark);
+  leg.position.set(s*0.17,0.55,0);g.add(leg);
+ }
+ const glow=new THREE.PointLight(type===1?0x9bcfff:0xff1717,type===2?1.5:1.0,5);
+ glow.position.y=height;g.add(glow);
+ scene.add(g);
+ return {group:g,type,phase:Math.random()*6,glow};
+}
+const entities=[
+ makeEntity(0), // E-001 THE STITCHER
+ makeEntity(1), // E-002 THE HOLLOW
+ makeEntity(2)  // E-003 THE WARDEN
+];
+const spawnCells=[[11,12],[3,11],[7,9]];
+entities.forEach((e,i)=>{
+ const p=worldPos(...spawnCells[i]);e.group.position.set(p.x,0,p.z);
+});
 
-    document.getElementById("overlay").style.display="none";
+// ----------------------------------------------------
+// PATHFINDING AND COLLISION
+// ----------------------------------------------------
+function findPath(start,goal){
+ if(!isOpen(start.row,start.col)||!isOpen(goal.row,goal.col))return [];
+ const queue=[start],prev=new Map(),seen=new Set([key(start.row,start.col)]);
+ const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+ while(queue.length){
+  const cur=queue.shift(),ck=key(cur.row,cur.col);
+  if(cur.row===goal.row&&cur.col===goal.col)break;
+  for(const [dr,dc] of dirs){
+   const r=cur.row+dr,c=cur.col+dc,k=key(r,c);
+   if(isOpen(r,c)&&!seen.has(k)){seen.add(k);prev.set(k,ck);queue.push({row:r,col:c});}
+  }
+ }
+ const target=key(goal.row,goal.col);
+ if(!seen.has(target))return [];
+ const path=[];let k=target;
+ while(prev.has(k)){const [r,c]=k.split(",").map(Number);path.unshift({row:r,col:c});k=prev.get(k);}
+ return path;
+}
 
-    canvas.requestPointerLock();
+function canOccupy(x,z){
+ const radius=0.36;
+ for(const [sx,sz] of [[x-radius,z],[x+radius,z],[x,z-radius],[x,z+radius]]){
+  const cell=cellAt({x:sx,z:sz});
+  if(!isOpen(cell.row,cell.col))return false;
+ }
+ return true;
+}
+function movePlayer(dx,dz){
+ const x=camera.position.x+dx,z=camera.position.z+dz;
+ if(canOccupy(x,camera.position.z))camera.position.x=x;
+ if(canOccupy(camera.position.x,z))camera.position.z=z;
+}
 
-};
+// ----------------------------------------------------
+// GAME STATE AND SCREENS
+// ----------------------------------------------------
+function loseGame(entityName){
+ if(gameOver||won)return;
+ gameOver=true;running=false;closeTask();
+ hud.classList.add("hidden");
+ title.innerHTML="SHIFT<br>TERMINATED";
+ description.textContent=`Your shift has ended. ${entityName} has located you. Facility records updated.`;
+ startButton.textContent="RESTART SHIFT";
+ overlay.classList.remove("hidden");
+ document.exitPointerLock?.();
+}
+
+function winGame(){
+ if(won||gameOver)return;
+ won=true;running=false;closeTask();hud.classList.add("hidden");
+ title.innerHTML="EVACUATION<br>AUTHORIZED";
+ description.textContent="The emergency doors open. You step outside as the facility lights return behind you. A final message appears on your access terminal: “THANK YOU FOR RESTORING THE SYSTEMS.”";
+ startButton.textContent="PLAY AGAIN";
+ overlay.classList.remove("hidden");
+ document.exitPointerLock?.();
+}
+
+function startGame(){
+ if(gameOver||won){location.reload();return;}
+ overlay.classList.add("hidden");hud.classList.remove("hidden");
+ renderer.domElement.requestPointerLock?.();running=true;
+}
+
+startButton.addEventListener("click",startGame);
 
 document.addEventListener("pointerlockchange",()=>{
-
+ if(document.pointerLockElement===renderer.domElement){
+  running=true;overlay.classList.add("hidden");hud.classList.remove("hidden");
+ }else if(running&&!gameOver&&!won){
+  running=false;
+  title.textContent="PAUSED";
+  description.textContent="The facility is waiting. Take a moment, then return to your shift.";
+  startButton.textContent="RESUME";
+  overlay.classList.remove("hidden");
+ }
 });
 
-document.addEventListener("mousemove",event=>{
-
-    if(started&&!modal&&!dead&&!won&&
-       document.pointerLockElement===canvas){
-
-        player.angle+=event.movementX*.0025;
-
-    }
-
+document.addEventListener("mousemove",e=>{
+ if(!running||document.pointerLockElement!==renderer.domElement)return;
+ player.yaw-=e.movementX*0.0021;
+ player.pitch-=e.movementY*0.0021;
+ player.pitch=THREE.MathUtils.clamp(player.pitch,-1.42,1.42);
+ camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
 });
 
-document.addEventListener("keydown",event=>{
-
-    keys[event.key.toLowerCase()]=true;
-
-    if(event.key.toLowerCase()==="e"&&started&&!modal&&!dead&&!won){
-
-        const index=nearestTask();
-
-        if(index!==-1){
-
-            openTask(index);
-
-        }else if(exitDistance()<1.5){
-
-            if(tasks.every(t=>t.done)){
-
-                won=true;
-
-                document.getElementById("overlay").style.display="flex";
-
-                document.getElementById("card").innerHTML=`
-                    <h1>SHIFT COMPLETE</h1>
-                    <p>You escaped the containment facility.</p>
-                    <p>All systems restored. The entities remain inside.</p>
-                    <button onclick="location.reload()">PLAY AGAIN</button>
-                `;
-
-            }else{
-
-                showMessage("EXIT SEALED — TASKS REMAIN");
-
-            }
-
-        }
-
-    }
-
+document.addEventListener("keydown",e=>{
+ keys[e.code]=true;
+ if(e.code==="Escape"&&taskOpen)closeTask();
+ if(e.code==="KeyF"&&!e.repeat){
+  player.flashlightOn=!player.flashlightOn;
+  flashlight.visible=player.flashlightOn;
+  flashlightBulb.visible=player.flashlightOn;
+ }
+ if(taskOpen&&/^Digit[1-4]$/.test(e.code)){
+  enterTaskNumber(Number(e.code.slice(-1)));
+ }
+ if(e.code==="KeyE"&&running&&!taskOpen){
+  const p=camera.position;
+  let nearest=-1,nearestDist=3;
+  stations.forEach((s,i)=>{
+   const d=Math.hypot(p.x-s.group.position.x,p.z-s.group.position.z);
+   if(d<nearestDist){nearestDist=d;nearest=i;}
+  });
+  if(nearest>=0){
+   if(restored.has(nearest))showToast("SYSTEM ALREADY RESTORED");
+   else openTask(nearest);
+  }else{
+   const d=Math.hypot(p.x-exitPos.x,p.z-exitPos.z);
+   if(d<3){
+    if(restored.size===TASKS.length)winGame();
+    else showToast(`ACCESS DENIED // ${TASKS.length-restored.size} SYSTEMS STILL OFFLINE`);
+   }
+  }
+ }
 });
+document.addEventListener("keyup",e=>keys[e.code]=false);
+window.addEventListener("blur",()=>{for(const k in keys)keys[k]=false;});
 
-document.addEventListener("keyup",event=>{
+// ----------------------------------------------------
+// PLAYER MOVEMENT
+// ----------------------------------------------------
+const clock=new THREE.Clock();
+const forward=new THREE.Vector3(),right=new THREE.Vector3(),move=new THREE.Vector3();
+let stamina=100,headBob=0;
+function updatePlayer(dt){
+ const moving=keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD;
+ const sprint=(keys.ShiftLeft||keys.ShiftRight)&&moving&&stamina>0;
+ const speed=sprint?RUN_SPEED:WALK_SPEED;
+ stamina=sprint?Math.max(0,stamina-30*dt):Math.min(100,stamina+18*dt);
+ staminaFill.style.width=stamina+"%";
+ staminaFill.style.background=stamina<25?"#e64545":"#65f0cc";
 
-    keys[event.key.toLowerCase()]=false;
+ forward.set(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
+ right.set(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+ move.set(0,0,0);
+ if(keys.KeyW)move.add(forward);
+ if(keys.KeyS)move.sub(forward);
+ if(keys.KeyD)move.add(right);
+ if(keys.KeyA)move.sub(right);
+ if(move.lengthSq()>0){
+  move.normalize().multiplyScalar(speed*dt);
+  movePlayer(move.x,move.z);
+  headBob+=dt*(sprint?13:8);
+  camera.position.y=PLAYER_HEIGHT+Math.sin(headBob)*0.025;
+ }else{
+  camera.position.y=THREE.MathUtils.damp(camera.position.y,PLAYER_HEIGHT,8,dt);
+ }
 
+ flashlight.position.copy(camera.position);
+ const look=new THREE.Vector3(
+  -Math.sin(player.yaw)*Math.cos(player.pitch),
+  Math.sin(player.pitch),
+  -Math.cos(player.yaw)*Math.cos(player.pitch)
+ );
+ flashlight.target.position.copy(camera.position).addScaledVector(look,10);
+ flashlightBulb.position.copy(camera.position).addScaledVector(look,0.5);
+}
+
+// ----------------------------------------------------
+// ENTITY AI
+// ----------------------------------------------------
+const paths=[[],[],[]],refresh=[0,0,0];
+let closestEnemy=100;
+
+function updateEntities(dt){
+ closestEnemy=100;
+ entities.forEach((e,i)=>{
+  const g=e.group;
+  let dx=camera.position.x-g.position.x,dz=camera.position.z-g.position.z;
+  let distance=Math.hypot(dx,dz);
+  closestEnemy=Math.min(closestEnemy,distance);
+
+  // The Hollow moves more slowly but periodically closes distance.
+  // The Warden accelerates as more systems are restored.
+  let speed=LEVELS[currentLevel-1].speeds[i];
+  if(i===0&&distance<10)speed+=0.85;
+  if(i===1&&Math.floor(elapsed/9)%2===0)speed*=0.35;
+  if(i===2)speed+=restored.size*0.13;
+  if(distance<12)speed*=1.35;
+
+  refresh[i]-=dt;
+  if(refresh[i]<=0){
+   paths[i]=findPath(cellAt(g.position),cellAt(camera.position));
+   refresh[i]=distance<12?0.25:0.55;
+  }
+
+  if(paths[i].length){
+   const target=worldPos(paths[i][0].row,paths[i][0].col);
+   dx=target.x-g.position.x;dz=target.z-g.position.z;
+   const d=Math.hypot(dx,dz);
+   if(d<0.22){g.position.x=target.x;g.position.z=target.z;paths[i].shift();}
+   else{
+    const step=Math.min(speed*dt,d);
+    const nx=g.position.x+dx/d*step,nz=g.position.z+dz/d*step;
+    if(canOccupy(nx,nz)){g.position.x=nx;g.position.z=nz;}
+    else refresh[i]=0;
+   }
+  }
+
+  const angle=Math.atan2(-(camera.position.x-g.position.x),-(camera.position.z-g.position.z));
+  g.rotation.y=angle;
+  g.position.y=Math.sin(elapsed*3+e.phase)*0.045;
+
+  // Each entity has a different catch distance based on its design.
+  const catchDistance=i===2?2.25:i===0?2.0:1.85;
+  if(distance<catchDistance)loseGame(["THE STITCHER","THE HOLLOW","THE WARDEN"][i]);
+ });
+}
+
+// ----------------------------------------------------
+// PROMPTS AND MAIN LOOP
+// ----------------------------------------------------
+function updatePrompt(){
+ if(!running||taskOpen){promptText.textContent="";return;}
+ let nearest=-1,dist=3;
+ stations.forEach((s,i)=>{
+  if(restored.has(i))return;
+  const d=Math.hypot(camera.position.x-s.group.position.x,camera.position.z-s.group.position.z);
+  if(d<dist){dist=d;nearest=i;}
+ });
+ if(nearest>=0)promptText.textContent=`[ E ] INTERACT — ${TASKS[nearest].name}`;
+ else{
+  const exitDist=Math.hypot(camera.position.x-exitPos.x,camera.position.z-exitPos.z);
+  promptText.textContent=exitDist<3?
+   (restored.size===TASKS.length?"[ E ] OPEN EMERGENCY EXIT":"[ EXIT LOCKED — RESTORE ALL SYSTEMS ]"):"";
+ }
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),0.05);
+ if(running){
+  elapsed+=dt;
+  updatePlayer(dt);
+  updateEntities(dt);
+  updatePrompt();
+
+  const base=LEVELS[currentLevel-1].fog;
+  scene.fog.density=closestEnemy<13?base+(13-closestEnemy)*0.001:base;
+  danger.style.opacity=closestEnemy<10?String(THREE.MathUtils.clamp((10-closestEnemy)/10,0,0.5)):"0";
+
+  stations.forEach((s,i)=>{
+   s.group.children[2].material.emissiveIntensity=restored.has(i)?0.15:1.2+Math.sin(elapsed*3+i)*0.4;
+  });
+
+  if(restored.size===TASKS.length){
+   exitTerminal.material=stationGlow;
+   exitLamp.color.setHex(0x33ff99);
+   exitLamp.intensity=3;
+  }
+  if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)toast.textContent="";}
+ }
+ renderer.render(scene,camera);
+}
+
+// ----------------------------------------------------
+// INITIALIZE
+// ----------------------------------------------------
+updateObjective();
+animate();
+
+window.addEventListener("resize",()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
 });
-
-function monsterCanSee(monster){
-
-    const dx=player.x-monster.x;
-    const dy=player.y-monster.y;
-
-    const d=Math.hypot(dx,dy);
-
-    if(d>monster.range)
-        return false;
-
-    const angle=Math.atan2(dy,dx);
-
-    const steps=Math.ceil(d/.1);
-
-    for(let i=1;i<steps;i++){
-
-        const t=i/steps;
-
-        const x=monster.x+dx*t;
-        const y=monster.y+dy*t;
-
-        if(wall(x,y))
-            return false;
-
-    }
-
-    return true;
-
-}
-
-function movePlayer(dt){
-
-    if(!started||modal||dead||won)
-        return;
-
-    let speed=2.3;
-
-    if(keys.shift)
-        speed=3.5;
-
-    const forward=(keys.w?1:0)-(keys.s?1:0);
-    const sideways=(keys.d?1:0)-(keys.a?1:0);
-
-    const vx=
-        (Math.cos(player.angle)*forward-
-        Math.sin(player.angle)*sideways)*speed*dt;
-
-    const vy=
-        (Math.sin(player.angle)*forward+
-        Math.cos(player.angle)*sideways)*speed*dt;
-
-    if(!wall(player.x+vx,player.y))
-        player.x+=vx;
-
-    if(!wall(player.x,player.y+vy))
-        player.y+=vy;
-
-    monsters.forEach(monster=>{
-
-        if(!monster.active)
-            return;
-
-        const d=distance(player,monster);
-
-        if(monsterCanSee(monster)||d<monster.range*.6){
-
-            const angle=Math.atan2(
-                player.y-monster.y,
-                player.x-monster.x
-            );
-
-            let speed=monster.speed;
-
-            if(monster.name==="THE STITCHER"&&d<4)
-                speed*=1.35;
-
-            const mx=Math.cos(angle)*speed*dt;
-            const my=Math.sin(angle)*speed*dt;
-
-            if(!wall(monster.x+mx,monster.y))
-                monster.x+=mx;
-
-            if(!wall(monster.x,monster.y+my))
-                monster.y+=my;
-
-        }
-
-        if(distance(player,monster)<.55){
-
-            dead=true;
-
-            document.exitPointerLock?.();
-
-            document.getElementById("overlay").style.display="flex";
-
-            document.getElementById("card").innerHTML=`
-                <h1>CONTAINMENT FAILED</h1>
-                <p>${monster.name} caught you.</p>
-                <p>The facility remains sealed.</p>
-                <button onclick="location.reload()">RETRY SHIFT</button>
-            `;
-
-        }
-
-    });
-
-    player.power=Math.max(
-        0,
-        player.power-dt*(keys.shift?1.1:.12)
-    );
-
-    document.getElementById("power").textContent=
-        Math.floor(player.power)+"%";
-
-    const nearest=Math.min(...monsters.map(m=>distance(player,m)));
-
-    document.getElementById("threat").textContent=
-        nearest<3?"CRITICAL":
-        nearest<6?"HIGH":"LOW";
-
-    if(nearest<3){
-
-        showMessage("ENTITY NEARBY");
-
-    }else if(exitDistance()<1.5&&!tasks.every(t=>t.done)){
-
-        showMessage("EXIT SEALED");
-
-    }else{
-
-        showMessage("");
-
-    }
-
-}
-
-function render(){
-
-    ctx.fillStyle="#05080c";
-
-    ctx.fillRect(0,0,W,H);
-
-    const horizon=H*.5;
-
-    // Ceiling and floor
-
-    for(let y=0;y<H;y++){
-
-        const t=Math.abs(y-horizon)/(H*.5);
-
-        if(y<horizon){
-
-            ctx.fillStyle=`rgb(${8+t*8},${13+t*9},${20+t*12})`;
-
-        }else{
-
-            ctx.fillStyle=`rgb(${13+t*8},${15+t*8},${17+t*8})`;
-
-        }
-
-        ctx.fillRect(0,y,W,1);
-
-    }
-
-    // Raycast walls
-
-    const fov=Math.PI/3;
-    const columns=Math.max(200,Math.floor(W/2));
-
-    for(let x=0;x<columns;x++){
-
-        const angle=
-            player.angle-fov/2+x/columns*fov;
-
-        const d=ray(angle);
-
-        const corrected=d*Math.cos(angle-player.angle);
-
-        const height=Math.min(H*2,H/corrected);
-
-        const top=horizon-height/2;
-
-        const shade=Math.max(12,160-corrected*10);
-
-        ctx.fillStyle=
-            `rgb(${shade*.55},${shade*.65},${shade*.75})`;
-
-        ctx.fillRect(
-            x*W/columns,
-            top,
-            W/columns+1,
-            height
-        );
-
-    }
-
-    // Tasks and monsters
-
-    const sprites=[];
-
-    tasks.forEach(task=>{
-
-        if(!task.done){
-
-            sprites.push({
-                x:task.x,
-                y:task.y,
-                color:"#d9b45c",
-                type:"TASK"
-            });
-
-        }
-
-    });
-
-    monsters.forEach(monster=>{
-
-        sprites.push({
-            ...monster,
-            type:"MONSTER"
-        });
-
-    });
-
-    sprites.sort((a,b)=>
-        distance(player,b)-distance(player,a)
-    );
-
-    sprites.forEach(sprite=>{
-
-        const dx=sprite.x-player.x;
-        const dy=sprite.y-player.y;
-
-        const d=Math.hypot(dx,dy);
-
-        let angle=Math.atan2(dy,dx)-player.angle;
-
-        while(angle>Math.PI)
-            angle-=Math.PI*2;
-
-        while(angle<-Math.PI)
-            angle+=Math.PI*2;
-
-        if(Math.abs(angle)>fov/2+.2)
-            return;
-
-        const sx=(.5+angle/fov)*W;
-
-        const size=Math.min(
-            H*1.2,
-            H/(d*Math.cos(angle))*.7
-        );
-
-        ctx.globalAlpha=Math.max(.25,1-d/20);
-
-        ctx.fillStyle=sprite.color;
-
-        ctx.shadowColor=sprite.color;
-
-        ctx.shadowBlur=sprite.type==="TASK"?0:20;
-
-        if(sprite.type==="TASK"){
-
-            ctx.fillRect(
-                sx-size*.12,
-                H*.5-size*.5,
-                size*.24,
-                size*.24
-            );
-
-        }else{
-
-            // Creature silhouette
-
-            ctx.fillRect(
-                sx-size*.18,
-                H*.5-size*.5,
-                size*.36,
-                size
-            );
-
-            // Long arms
-
-            ctx.fillRect(
-                sx-size*.3,
-                H*.5-size*.25,
-                size*.12,
-                size*.65
-            );
-
-            ctx.fillRect(
-                sx+size*.18,
-                H*.5-size*.25,
-                size*.12,
-                size*.65
-            );
-
-            // Eyes
-
-            ctx.fillStyle="#ff1028";
-
-            ctx.fillRect(
-                sx-size*.10,
-                H*.5-size*.18,
-                size*.07,
-                size*.035
-            );
-
-            ctx.fillRect(
-                sx+size*.03,
-                H*.5-size*.18,
-                size*.07,
-                size*.035
-            );
-
-        }
-
-        ctx.shadowBlur=0;
-
-        ctx.globalAlpha=1;
-
-    });
-
-    const task=nearestTask();
-
-    if(task!==-1){
-
-        document.getElementById("prompt").textContent=
-            "PRESS E TO INTERACT: "+tasks[task].name;
-
-    }else if(exitDistance()<1.5){
-
-        document.getElementById("prompt").textContent=
-            "PRESS E TO USE EXIT";
-
-    }else{
-
-        document.getElementById("prompt").textContent=
-            "WASD MOVE · MOUSE LOOK · E INTERACT · SHIFT SPRINT";
-
-    }
-
-    // Low power darkness
-
-    if(player.power<25){
-
-        ctx.fillStyle=
-            `rgba(0,0,0,${.4+(25-player.power)*.015})`;
-
-        ctx.fillRect(0,0,W,H);
-
-    }
-
-}
-
-function loop(time){
-
-    const dt=Math.min(.05,(time-last)/1000||0);
-
-    last=time;
-
-    movePlayer(dt);
-
-    render();
-
-    requestAnimationFrame(loop);
-
-}
-
-updateTasks();
-
-requestAnimationFrame(loop);
-
-})();
 </script>
-
 </body>
 </html>
