@@ -1,0 +1,1027 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEAD SHIFT: CONTAINMENT</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    background:#05070a;
+    color:#e5edf2;
+    font-family:Arial,sans-serif;
+    overflow:hidden;
+}
+
+canvas{
+    display:block;
+    width:100vw;
+    height:100vh;
+}
+
+#hud{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+}
+
+.panel{
+    background:rgba(5,12,18,.88);
+    border:1px solid #33434f;
+    padding:12px;
+    border-radius:4px;
+}
+
+#tasks{
+    position:absolute;
+    top:15px;
+    left:15px;
+    width:230px;
+}
+
+#taskList{
+    padding-left:18px;
+    line-height:1.8;
+}
+
+#status{
+    position:absolute;
+    top:15px;
+    right:15px;
+    text-align:right;
+}
+
+#bottom{
+    position:absolute;
+    bottom:18px;
+    width:100%;
+    text-align:center;
+    text-shadow:0 2px 5px black;
+}
+
+#prompt{
+    color:#f0cf81;
+    font-weight:bold;
+    margin-bottom:6px;
+}
+
+#crosshair{
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:8px;
+    height:8px;
+    border:1px solid white;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+}
+
+#warning{
+    color:#ff3949;
+    font-weight:bold;
+}
+
+#overlay{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    background:rgba(0,0,0,.92);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+#card{
+    width:min(550px,92vw);
+    padding:30px;
+    background:#0b1118;
+    border:1px solid #34434d;
+    box-shadow:0 0 70px #000;
+}
+
+h1{
+    letter-spacing:5px;
+    color:#e8edf1;
+}
+
+p{
+    color:#b6c3cc;
+    line-height:1.6;
+}
+
+button{
+    background:#a51f2b;
+    color:white;
+    border:none;
+    padding:12px 18px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#d22b38;
+}
+
+#taskModal{
+    display:none;
+    position:fixed;
+    z-index:8;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:min(430px,90vw);
+    padding:24px;
+    background:#0b141d;
+    border:1px solid #53616b;
+    box-shadow:0 0 80px black;
+}
+
+#taskModal button{
+    margin:4px;
+}
+
+#closeTask{
+    float:right;
+    background:#39434c;
+}
+
+#taskGame{
+    margin:15px 0;
+}
+
+#hurt{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:#b00016;
+    opacity:0;
+    z-index:5;
+}
+
+#flash{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:white;
+    opacity:0;
+    z-index:4;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+
+    <div id="tasks" class="panel">
+        <b>SHIFT OBJECTIVES</b>
+        <div id="count">0 / 6 complete</div>
+        <ol id="taskList"></ol>
+    </div>
+
+    <div id="status" class="panel">
+        POWER: <span id="power">100%</span><br>
+        THREAT: <span id="threat">LOW</span><br>
+        <span id="warning"></span>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="bottom">
+        <div id="prompt">WASD MOVE · MOUSE LOOK · E INTERACT</div>
+        <div>Complete all facility tasks to unlock the exit.</div>
+    </div>
+
+</div>
+
+<div id="hurt"></div>
+<div id="flash"></div>
+
+<div id="taskModal">
+
+    <button id="closeTask">X</button>
+
+    <h2 id="taskTitle">TASK</h2>
+
+    <p id="taskText"></p>
+
+    <div id="taskGame"></div>
+
+    <button id="taskAction">COMPLETE</button>
+
+</div>
+
+<div id="overlay">
+
+    <div id="card">
+
+        <h1>DEAD SHIFT</h1>
+
+        <p><b>CONTAINMENT FACILITY // NIGHT 04</b></p>
+
+        <p>
+            The research facility has been abandoned.
+            Three hostile entities remain inside.
+        </p>
+
+        <p>
+            Restore six systems, survive the creatures,
+            and reach the exit.
+        </p>
+
+        <p>
+            <b>WASD:</b> Move<br>
+            <b>Mouse:</b> Look around<br>
+            <b>E:</b> Interact<br>
+            <b>Shift:</b> Sprint
+        </p>
+
+        <button id="start">BEGIN SHIFT</button>
+
+    </div>
+
+</div>
+
+<script>
+(() => {
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let W,H;
+
+function resize(){
+    W = canvas.width = innerWidth;
+    H = canvas.height = innerHeight;
+}
+
+addEventListener("resize",resize);
+resize();
+
+const map = [
+"####################",
+"#....#.....#......#",
+"#....#.....#..##..#",
+"#.............##..#",
+"###.####.##......##",
+"#...#....##.##.....#",
+"#...#........#.....#",
+"#...####.##..#..##.#",
+"#........#..#......#",
+"#.######.#..####...#",
+"#......#..........##",
+"#..##..####.##.....#",
+"#..##...........##.#",
+"#......##.####.....#",
+"##.....#......#....#",
+"#......#......#....#",
+"#.................E#",
+"####################"
+];
+
+const MW = map[0].length;
+const MH = map.length;
+
+let started = false;
+let dead = false;
+let won = false;
+let modal = false;
+let last = 0;
+
+const player = {
+    x:1.5,
+    y:1.5,
+    angle:0,
+    power:100
+};
+
+const keys = {};
+
+const tasks = [
+    {name:"Power Relay",x:2.5,y:2.5,done:false,type:0},
+    {name:"Medical Scanner",x:15.5,y:2.5,done:false,type:1},
+    {name:"Coolant Pump",x:2.5,y:6.5,done:false,type:2},
+    {name:"Security Terminal",x:14.5,y:7.5,done:false,type:0},
+    {name:"Research Samples",x:5.5,y:12.5,done:false,type:1},
+    {name:"Air Filtration",x:13.5,y:14.5,done:false,type:2}
+];
+
+const monsters = [
+    {
+        name:"THE STITCHER",
+        x:17.5,y:1.5,
+        speed:1.05,
+        range:8,
+        color:"#8d1825",
+        active:true
+    },
+    {
+        name:"THE HOLLOW",
+        x:17.5,y:9.5,
+        speed:.75,
+        range:10,
+        color:"#8ba9b7",
+        active:true
+    },
+    {
+        name:"THE WARDEN",
+        x:1.5,y:15.5,
+        speed:.65,
+        range:12,
+        color:"#68478e",
+        active:true
+    }
+];
+
+function distance(a,b){
+    return Math.hypot(a.x-b.x,a.y-b.y);
+}
+
+function wall(x,y){
+
+    const ix=Math.floor(x);
+    const iy=Math.floor(y);
+
+    if(iy<0||iy>=MH||ix<0||ix>=MW)
+        return true;
+
+    return map[iy][ix]==="#";
+}
+
+function ray(angle,maxDistance=25){
+
+    const step=.025;
+
+    for(let d=.01;d<maxDistance;d+=step){
+
+        const x=player.x+Math.cos(angle)*d;
+        const y=player.y+Math.sin(angle)*d;
+
+        if(wall(x,y))
+            return d;
+
+    }
+
+    return maxDistance;
+}
+
+function updateTasks(){
+
+    const completed=tasks.filter(t=>t.done).length;
+
+    document.getElementById("count").textContent=
+        completed+" / "+tasks.length+" complete";
+
+    document.getElementById("taskList").innerHTML=
+        tasks.map(t=>
+            `<li style="color:${t.done?"#70d89a":"#b7c5ce"}">
+            ${t.done?"✓ ":""}${t.name}</li>`
+        ).join("");
+
+}
+
+function nearestTask(){
+
+    let best=-1;
+    let bestDistance=1.5;
+
+    tasks.forEach((t,i)=>{
+
+        if(t.done)return;
+
+        const d=distance(player,t);
+
+        if(d<bestDistance){
+            best=i;
+            bestDistance=d;
+        }
+
+    });
+
+    return best;
+}
+
+function exitDistance(){
+
+    return distance(player,{x:17.5,y:16.5});
+
+}
+
+function showMessage(message){
+
+    document.getElementById("warning").textContent=message;
+
+}
+
+function closeTask(){
+
+    modal=false;
+
+    document.getElementById("taskModal").style.display="none";
+
+}
+
+function openTask(index){
+
+    modal=true;
+
+    const task=tasks[index];
+
+    document.getElementById("taskTitle").textContent=task.name;
+
+    document.getElementById("taskText").textContent=
+        "Facility system requires manual restoration.";
+
+    const game=document.getElementById("taskGame");
+
+    game.innerHTML="";
+
+    let progress=0;
+
+    if(task.type===0){
+
+        document.getElementById("taskText").textContent=
+            "Enter the access sequence: UP, CIRCLE, SQUARE.";
+
+        game.innerHTML=`
+            <input id="sequence"
+            placeholder="up circle square"
+            style="width:100%;padding:12px;background:#111;color:white;border:1px solid #555">
+        `;
+
+        document.getElementById("taskAction").textContent="VERIFY";
+
+    }
+
+    if(task.type===1){
+
+        document.getElementById("taskText").textContent=
+            "Stabilize the medical scanner. Click three times.";
+
+        game.innerHTML=`
+            <div style="background:#222;height:20px;margin:15px 0">
+                <div id="progressBar"
+                style="height:100%;width:0;background:#56d6a0"></div>
+            </div>
+            <button id="stabilize">STABILIZE</button>
+            <p id="progressText">0 / 3</p>
+        `;
+
+        document.getElementById("taskAction").textContent="FINISH";
+
+        document.getElementById("stabilize").onclick=()=>{
+
+            progress++;
+
+            document.getElementById("progressBar").style.width=
+                Math.min(progress,3)/3*100+"%";
+
+            document.getElementById("progressText").textContent=
+                Math.min(progress,3)+" / 3";
+
+        };
+
+    }
+
+    if(task.type===2){
+
+        document.getElementById("taskText").textContent=
+            "Restore the system in the correct order: 1, 2, 3.";
+
+        game.innerHTML=`
+            <div>
+                <button class="sequenceButton" data-number="1">1</button>
+                <button class="sequenceButton" data-number="2">2</button>
+                <button class="sequenceButton" data-number="3">3</button>
+            </div>
+            <p id="sequenceProgress">Sequence: 1 → 2 → 3</p>
+        `;
+
+        document.getElementById("taskAction").textContent="FINISH";
+
+        document.querySelectorAll(".sequenceButton").forEach(button=>{
+
+            button.onclick=()=>{
+
+                const expected=progress+1;
+                const selected=Number(button.dataset.number);
+
+                if(selected===expected){
+
+                    progress++;
+
+                    document.getElementById("sequenceProgress").textContent=
+                        progress>=3?"System restored!":"Progress: "+progress+"/3";
+
+                }else{
+
+                    progress=0;
+
+                    document.getElementById("sequenceProgress").textContent=
+                        "Incorrect sequence. Start again.";
+
+                }
+
+            };
+
+        });
+
+    }
+
+    document.getElementById("taskModal").style.display="block";
+
+    document.getElementById("taskAction").onclick=()=>{
+
+        let success=false;
+
+        if(task.type===0){
+
+            const input=document.getElementById("sequence");
+
+            success=input.value.trim().toLowerCase()==="up circle square";
+
+        }
+
+        if(task.type===1||task.type===2){
+
+            success=progress>=3;
+
+        }
+
+        if(success){
+
+            task.done=true;
+
+            updateTasks();
+
+            closeTask();
+
+            showMessage("SYSTEM RESTORED");
+
+        }else{
+
+            document.getElementById("taskText").textContent=
+                "System incomplete. Try again.";
+
+        }
+
+    };
+
+}
+
+document.getElementById("closeTask").onclick=closeTask;
+
+document.getElementById("start").onclick=()=>{
+
+    started=true;
+
+    document.getElementById("overlay").style.display="none";
+
+    canvas.requestPointerLock();
+
+};
+
+document.addEventListener("pointerlockchange",()=>{
+
+});
+
+document.addEventListener("mousemove",event=>{
+
+    if(started&&!modal&&!dead&&!won&&
+       document.pointerLockElement===canvas){
+
+        player.angle+=event.movementX*.0025;
+
+    }
+
+});
+
+document.addEventListener("keydown",event=>{
+
+    keys[event.key.toLowerCase()]=true;
+
+    if(event.key.toLowerCase()==="e"&&started&&!modal&&!dead&&!won){
+
+        const index=nearestTask();
+
+        if(index!==-1){
+
+            openTask(index);
+
+        }else if(exitDistance()<1.5){
+
+            if(tasks.every(t=>t.done)){
+
+                won=true;
+
+                document.getElementById("overlay").style.display="flex";
+
+                document.getElementById("card").innerHTML=`
+                    <h1>SHIFT COMPLETE</h1>
+                    <p>You escaped the containment facility.</p>
+                    <p>All systems restored. The entities remain inside.</p>
+                    <button onclick="location.reload()">PLAY AGAIN</button>
+                `;
+
+            }else{
+
+                showMessage("EXIT SEALED — TASKS REMAIN");
+
+            }
+
+        }
+
+    }
+
+});
+
+document.addEventListener("keyup",event=>{
+
+    keys[event.key.toLowerCase()]=false;
+
+});
+
+function monsterCanSee(monster){
+
+    const dx=player.x-monster.x;
+    const dy=player.y-monster.y;
+
+    const d=Math.hypot(dx,dy);
+
+    if(d>monster.range)
+        return false;
+
+    const angle=Math.atan2(dy,dx);
+
+    const steps=Math.ceil(d/.1);
+
+    for(let i=1;i<steps;i++){
+
+        const t=i/steps;
+
+        const x=monster.x+dx*t;
+        const y=monster.y+dy*t;
+
+        if(wall(x,y))
+            return false;
+
+    }
+
+    return true;
+
+}
+
+function movePlayer(dt){
+
+    if(!started||modal||dead||won)
+        return;
+
+    let speed=2.3;
+
+    if(keys.shift)
+        speed=3.5;
+
+    const forward=(keys.w?1:0)-(keys.s?1:0);
+    const sideways=(keys.d?1:0)-(keys.a?1:0);
+
+    const vx=
+        (Math.cos(player.angle)*forward-
+        Math.sin(player.angle)*sideways)*speed*dt;
+
+    const vy=
+        (Math.sin(player.angle)*forward+
+        Math.cos(player.angle)*sideways)*speed*dt;
+
+    if(!wall(player.x+vx,player.y))
+        player.x+=vx;
+
+    if(!wall(player.x,player.y+vy))
+        player.y+=vy;
+
+    monsters.forEach(monster=>{
+
+        if(!monster.active)
+            return;
+
+        const d=distance(player,monster);
+
+        if(monsterCanSee(monster)||d<monster.range*.6){
+
+            const angle=Math.atan2(
+                player.y-monster.y,
+                player.x-monster.x
+            );
+
+            let speed=monster.speed;
+
+            if(monster.name==="THE STITCHER"&&d<4)
+                speed*=1.35;
+
+            const mx=Math.cos(angle)*speed*dt;
+            const my=Math.sin(angle)*speed*dt;
+
+            if(!wall(monster.x+mx,monster.y))
+                monster.x+=mx;
+
+            if(!wall(monster.x,monster.y+my))
+                monster.y+=my;
+
+        }
+
+        if(distance(player,monster)<.55){
+
+            dead=true;
+
+            document.exitPointerLock?.();
+
+            document.getElementById("overlay").style.display="flex";
+
+            document.getElementById("card").innerHTML=`
+                <h1>CONTAINMENT FAILED</h1>
+                <p>${monster.name} caught you.</p>
+                <p>The facility remains sealed.</p>
+                <button onclick="location.reload()">RETRY SHIFT</button>
+            `;
+
+        }
+
+    });
+
+    player.power=Math.max(
+        0,
+        player.power-dt*(keys.shift?1.1:.12)
+    );
+
+    document.getElementById("power").textContent=
+        Math.floor(player.power)+"%";
+
+    const nearest=Math.min(...monsters.map(m=>distance(player,m)));
+
+    document.getElementById("threat").textContent=
+        nearest<3?"CRITICAL":
+        nearest<6?"HIGH":"LOW";
+
+    if(nearest<3){
+
+        showMessage("ENTITY NEARBY");
+
+    }else if(exitDistance()<1.5&&!tasks.every(t=>t.done)){
+
+        showMessage("EXIT SEALED");
+
+    }else{
+
+        showMessage("");
+
+    }
+
+}
+
+function render(){
+
+    ctx.fillStyle="#05080c";
+
+    ctx.fillRect(0,0,W,H);
+
+    const horizon=H*.5;
+
+    // Ceiling and floor
+
+    for(let y=0;y<H;y++){
+
+        const t=Math.abs(y-horizon)/(H*.5);
+
+        if(y<horizon){
+
+            ctx.fillStyle=`rgb(${8+t*8},${13+t*9},${20+t*12})`;
+
+        }else{
+
+            ctx.fillStyle=`rgb(${13+t*8},${15+t*8},${17+t*8})`;
+
+        }
+
+        ctx.fillRect(0,y,W,1);
+
+    }
+
+    // Raycast walls
+
+    const fov=Math.PI/3;
+    const columns=Math.max(200,Math.floor(W/2));
+
+    for(let x=0;x<columns;x++){
+
+        const angle=
+            player.angle-fov/2+x/columns*fov;
+
+        const d=ray(angle);
+
+        const corrected=d*Math.cos(angle-player.angle);
+
+        const height=Math.min(H*2,H/corrected);
+
+        const top=horizon-height/2;
+
+        const shade=Math.max(12,160-corrected*10);
+
+        ctx.fillStyle=
+            `rgb(${shade*.55},${shade*.65},${shade*.75})`;
+
+        ctx.fillRect(
+            x*W/columns,
+            top,
+            W/columns+1,
+            height
+        );
+
+    }
+
+    // Tasks and monsters
+
+    const sprites=[];
+
+    tasks.forEach(task=>{
+
+        if(!task.done){
+
+            sprites.push({
+                x:task.x,
+                y:task.y,
+                color:"#d9b45c",
+                type:"TASK"
+            });
+
+        }
+
+    });
+
+    monsters.forEach(monster=>{
+
+        sprites.push({
+            ...monster,
+            type:"MONSTER"
+        });
+
+    });
+
+    sprites.sort((a,b)=>
+        distance(player,b)-distance(player,a)
+    );
+
+    sprites.forEach(sprite=>{
+
+        const dx=sprite.x-player.x;
+        const dy=sprite.y-player.y;
+
+        const d=Math.hypot(dx,dy);
+
+        let angle=Math.atan2(dy,dx)-player.angle;
+
+        while(angle>Math.PI)
+            angle-=Math.PI*2;
+
+        while(angle<-Math.PI)
+            angle+=Math.PI*2;
+
+        if(Math.abs(angle)>fov/2+.2)
+            return;
+
+        const sx=(.5+angle/fov)*W;
+
+        const size=Math.min(
+            H*1.2,
+            H/(d*Math.cos(angle))*.7
+        );
+
+        ctx.globalAlpha=Math.max(.25,1-d/20);
+
+        ctx.fillStyle=sprite.color;
+
+        ctx.shadowColor=sprite.color;
+
+        ctx.shadowBlur=sprite.type==="TASK"?0:20;
+
+        if(sprite.type==="TASK"){
+
+            ctx.fillRect(
+                sx-size*.12,
+                H*.5-size*.5,
+                size*.24,
+                size*.24
+            );
+
+        }else{
+
+            // Creature silhouette
+
+            ctx.fillRect(
+                sx-size*.18,
+                H*.5-size*.5,
+                size*.36,
+                size
+            );
+
+            // Long arms
+
+            ctx.fillRect(
+                sx-size*.3,
+                H*.5-size*.25,
+                size*.12,
+                size*.65
+            );
+
+            ctx.fillRect(
+                sx+size*.18,
+                H*.5-size*.25,
+                size*.12,
+                size*.65
+            );
+
+            // Eyes
+
+            ctx.fillStyle="#ff1028";
+
+            ctx.fillRect(
+                sx-size*.10,
+                H*.5-size*.18,
+                size*.07,
+                size*.035
+            );
+
+            ctx.fillRect(
+                sx+size*.03,
+                H*.5-size*.18,
+                size*.07,
+                size*.035
+            );
+
+        }
+
+        ctx.shadowBlur=0;
+
+        ctx.globalAlpha=1;
+
+    });
+
+    const task=nearestTask();
+
+    if(task!==-1){
+
+        document.getElementById("prompt").textContent=
+            "PRESS E TO INTERACT: "+tasks[task].name;
+
+    }else if(exitDistance()<1.5){
+
+        document.getElementById("prompt").textContent=
+            "PRESS E TO USE EXIT";
+
+    }else{
+
+        document.getElementById("prompt").textContent=
+            "WASD MOVE · MOUSE LOOK · E INTERACT · SHIFT SPRINT";
+
+    }
+
+    // Low power darkness
+
+    if(player.power<25){
+
+        ctx.fillStyle=
+            `rgba(0,0,0,${.4+(25-player.power)*.015})`;
+
+        ctx.fillRect(0,0,W,H);
+
+    }
+
+}
+
+function loop(time){
+
+    const dt=Math.min(.05,(time-last)/1000||0);
+
+    last=time;
+
+    movePlayer(dt);
+
+    render();
+
+    requestAnimationFrame(loop);
+
+}
+
+updateTasks();
+
+requestAnimationFrame(loop);
+
+})();
+</script>
+
+</body>
+</html>
